@@ -210,3 +210,7 @@ __marimo__/
 
 
 config_pgadmin_dev.json
+logs
+duckdb
+warehouse
+exports

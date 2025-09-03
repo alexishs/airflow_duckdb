@@ -1,28 +1,40 @@
-version: "3.9"
-
 x-airflow-common: &airflow-common
-  build: airflow_common.Dockerfile
+  build:
+    context: .
+    dockerfile: airflow_dev.Dockerfile
+    args:
+      - AIRFLOW_UID=${AIRFLOW_UID}
   environment:
     - AIRFLOW__CORE__EXECUTOR=${AIRFLOW__CORE__EXECUTOR}
     - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=${AIRFLOW__DATABASE__SQL_ALCHEMY_CONN}
     - AIRFLOW__CORE__FERNET_KEY=${AIRFLOW__CORE__FERNET_KEY}
     - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW__WEBSERVER__SECRET_KEY}
-  volumes:
-    - ./dags:/opt/airflow/dags
+    - AIRFLOW__CORE__LOAD_EXAMPLES=false
+    # - AIRFLOW_UID=${AIRFLOW_UID}
   depends_on:
-    psql_dev:
+    airflow_postgres_dev:
       condition: service_healthy
+  # user: 1001:0
+  volumes:
+    # - ./airflow:/opt/airflow
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./duckdb:/opt/airflow/duckdb
+    - ./warehouse:/opt/airflow/warehouse
+    - ./exports:/opt/airflow/exports
+
 
 services:
-  psql_dev:
+  airflow_postgres_dev:
     image: postgres:14
     restart: always
+    # container_name: airflow_postgres_dev
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - airflow_postgres_data_dev:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
@@ -31,34 +43,40 @@ services:
       timeout: 5s
       retries: 5
 
-  pgadmin_dev:
-    image: dpage/pgadmin4
-    restart: always
-    environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
-    ports:
-      - "8081:80"
-    depends_on:
-      psql_dev:
-        condition: service_healthy
-    volumes:
-      - ./config_pgadmin_dev.json:/pgadmin4/servers.json
-
-  airflow-webserver:
+  # Ce service exécute une commande temporaire pour initialiser la base de données et créer l'utilisateur.
+  init_airflow_db_dev:
     <<: *airflow-common
+    restart: no
+    # container_name: init_airflow_db_dev
+    entrypoint: /bin/bash
+    command: >
+      -c "airflow db init &&
+      airflow users create
+      --username ${AIR_FLOW_USER_NAME}
+      --password ${AIR_FLOW_USER_PASSWORD}
+      --firstname ${AIR_FLOW_USER_FIRST_NAME}
+      --lastname ${AIR_FLOW_USER_LAST_NAME}
+      --role Admin
+      --email ${AIR_FLOW_USER_EMAIL}"
+
+  airflow_webserver_dev:
+    <<: *airflow-common
+    restart: always
+    # container_name: airflow_webserver_dev
     command: webserver
     ports:
-      - "8082:8080"
+      - "8080:8080"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 10s
       timeout: 10s
       retries: 5
 
-  airflow-scheduler:
+  airflow_scheduler_dev:
     <<: *airflow-common
+    restart: always
+    # container_name: airflow_scheduler_dev
     command: scheduler
 
 volumes:
-  postgres_data:
+  airflow_postgres_data_dev:
