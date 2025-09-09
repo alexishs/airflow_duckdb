@@ -14,8 +14,9 @@ x-airflow-common: &airflow-common
     - PG_METIER_PASSWORD=${PG_METIER_PASSWORD}
     - PG_METIER_SERVER=${PG_METIER_SERVER}
     - PG_METIER_BASE=${PG_METIER_BASE}
-    # - PYTHONPATH=/opt/airflow/dags
-    # - AIRFLOW_UID=${AIRFLOW_UID}
+    - GTFS_LIBELLES=${GTFS_LIBELLES}
+    - GTFS_URLS_INFOS_STATIQUES=${GTFS_URLS_INFOS_STATIQUES}
+    - GTFS_URLS_RT=${GTFS_URLS_RT}
   depends_on:
     airflow_postgres_dev:
       condition: service_healthy

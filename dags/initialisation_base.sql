@@ -1,16 +1,27 @@
+CREATE TABLE entite (
+   id_entite INTEGER NOT NULL PRIMARY KEY,
+   libelle_entite VARCHAR(150) NOT NULL,
+   url_donnees_statiques VARCHAR(255) NOT NULL,
+   url_rt VARCHAR(255)
+);
+
 CREATE TABLE agency (
-   agency_id VARCHAR(255) NOT NULL PRIMARY KEY,
+   id_entite INTEGER NOT NULL,
+   agency_id VARCHAR(255) NOT NULL,
    agency_name VARCHAR(255) NOT NULL,
    agency_url VARCHAR(255) NOT NULL,
    agency_timezone VARCHAR(255) NOT NULL,
    agency_lang VARCHAR(255),
    agency_phone VARCHAR(255),
    agency_fare_url VARCHAR(255),
-   agency_email VARCHAR(255)
+   agency_email VARCHAR(255),
+   PRIMARY KEY (id_entite, agency_id),
+   FOREIGN KEY (id_entite) REFERENCES entite(id_entite)
 );
 
 CREATE TABLE calendar (
-   service_id VARCHAR(255) NOT NULL PRIMARY KEY,
+   id_entite INTEGER NOT NULL,
+   service_id VARCHAR(255) NOT NULL,
    monday BOOLEAN NOT NULL,
    tuesday BOOLEAN NOT NULL,
    wednesday BOOLEAN NOT NULL,
@@ -19,20 +30,25 @@ CREATE TABLE calendar (
    saturday BOOLEAN NOT NULL,
    sunday BOOLEAN NOT NULL,
    start_date DATE NOT NULL,
-   end_date DATE NOT NULL
+   end_date DATE NOT NULL,
+   PRIMARY KEY (id_entite, service_id),
+   FOREIGN KEY (id_entite) REFERENCES entite(id_entite)
 );
 
 CREATE TABLE calendar_dates (
    -- Clé primaire composée pour garantir l'unicité des exceptions de service
+   id_entite INTEGER NOT NULL,
    service_id VARCHAR(255) NOT NULL,
    date_service DATE NOT NULL,
    exception_type VARCHAR(255) NOT NULL,
-   PRIMARY KEY (service_id, date_service),
-   FOREIGN KEY (service_id) REFERENCES calendar(service_id)
+   PRIMARY KEY (id_entite, service_id, date_service),
+   FOREIGN KEY (id_entite) REFERENCES entite(id_entite),
+   FOREIGN KEY (id_entite, service_id) REFERENCES calendar(id_entite, service_id)
 );
 
 CREATE TABLE feed_info (
-   feed_publisher_name VARCHAR(255) NOT NULL PRIMARY KEY,
+   id_entite INTEGER NOT NULL,
+   feed_publisher_name VARCHAR(255) NOT NULL,
    feed_publisher_url VARCHAR(255) NOT NULL,
    feed_lang VARCHAR(255) NOT NULL,
    default_lang VARCHAR(255),
@@ -40,11 +56,14 @@ CREATE TABLE feed_info (
    feed_end_date DATE,
    feed_version VARCHAR(255),
    feed_contact_email VARCHAR(255),
-   feed_contact_url VARCHAR(255)
+   feed_contact_url VARCHAR(255),
+   PRIMARY KEY (id_entite, feed_publisher_name),
+   FOREIGN KEY (id_entite) REFERENCES entite(id_entite)
 );
 
 CREATE TABLE routes (
-   route_id VARCHAR(255) NOT NULL PRIMARY KEY,
+   id_entite INTEGER NOT NULL,
+   route_id VARCHAR(255) NOT NULL,
    agency_id VARCHAR(255),
    route_short_name VARCHAR(255),
    route_long_name VARCHAR(255),
@@ -57,21 +76,26 @@ CREATE TABLE routes (
    continuous_pickup VARCHAR(255),
    continuous_drop_off VARCHAR(255),
    network_id VARCHAR(255),
-   FOREIGN KEY (agency_id) REFERENCES agency(agency_id)
+   PRIMARY KEY (id_entite, route_id),
+   FOREIGN KEY (id_entite) REFERENCES entite(id_entite),
+   FOREIGN KEY (id_entite, agency_id) REFERENCES agency(id_entite, agency_id)
 );
 
 CREATE TABLE shapes (
+   id_entite INTEGER NOT NULL,
    shape_id VARCHAR(255) NOT NULL,
    shape_pt_lat DOUBLE PRECISION NOT NULL,
    shape_pt_lon DOUBLE PRECISION NOT NULL,
    shape_pt_sequence integer NOT NULL,
    shape_dist_traveled DOUBLE PRECISION,
    -- Clé primaire composée pour identifier chaque point unique dans une forme
-   PRIMARY KEY (shape_id, shape_pt_sequence)
+   PRIMARY KEY (id_entite, shape_id, shape_pt_sequence),
+   FOREIGN KEY (id_entite) REFERENCES entite(id_entite)
 );
 
 CREATE TABLE stops (
-   stop_id VARCHAR(255) NOT NULL PRIMARY KEY,
+   id_entite INTEGER NOT NULL,
+   stop_id VARCHAR(255) NOT NULL,
    stop_code VARCHAR(255),
    stop_name VARCHAR(255),
    tts_stop_name VARCHAR(255),
@@ -85,16 +109,17 @@ CREATE TABLE stops (
    stop_timezone VARCHAR(255),
    wheelchair_boarding integer,
    level_id VARCHAR(255),
-   platform_code VARCHAR(255)
-   -- NOTE : Le FOREIGN KEY (route_id) de votre script original a été retiré, car
-   -- un arrêt n'est pas directement lié à une route, mais à un trip via stop_times.
+   platform_code VARCHAR(255),
+   PRIMARY KEY (id_entite, stop_id),
+   FOREIGN KEY (id_entite) REFERENCES entite(id_entite)
 );
 
 CREATE TABLE trips (
    -- Le trip_id est la clé primaire car un route_id peut avoir de nombreux trajets
+   id_entite INTEGER NOT NULL,
    route_id VARCHAR(255) NOT NULL,
    service_id VARCHAR(255) NOT NULL,
-   trip_id VARCHAR(255) NOT NULL PRIMARY KEY,
+   trip_id VARCHAR(255) NOT NULL,
    trip_headsign VARCHAR(255),
    trip_short_name VARCHAR(255),
    direction_id VARCHAR(255),
@@ -102,11 +127,14 @@ CREATE TABLE trips (
    wheelchair_accessible VARCHAR(255),
    bikes_allowed VARCHAR(255),
    cars_allowed VARCHAR(255),
-   FOREIGN KEY (route_id) REFERENCES routes(route_id),
-   FOREIGN KEY (service_id) REFERENCES calendar(service_id)
+   PRIMARY KEY (id_entite, trip_id),
+   FOREIGN KEY (id_entite) REFERENCES entite(id_entite),
+   FOREIGN KEY (id_entite, route_id) REFERENCES routes(id_entite, route_id),
+   FOREIGN KEY (id_entite, service_id) REFERENCES calendar(id_entite, service_id)
 );
 
 CREATE TABLE stop_times (
+   id_entite INTEGER NOT NULL,
    trip_id VARCHAR(255) NOT NULL,
    -- Recommandation : Les champs de temps devraient être de type TIME
    arrival_time TIME,
@@ -127,7 +155,8 @@ CREATE TABLE stop_times (
    pickup_booking_rule_id VARCHAR(255),
    drop_off_booking_rule_id VARCHAR(255),
    -- Clé primaire composée car un trip peut avoir de nombreux arrêts
-   PRIMARY KEY (trip_id, stop_sequence),
-   FOREIGN KEY (trip_id) REFERENCES trips(trip_id),
-   FOREIGN KEY (stop_id) REFERENCES stops(stop_id)
+   PRIMARY KEY (id_entite, trip_id, stop_sequence),
+   FOREIGN KEY (id_entite) REFERENCES entite(id_entite),
+   FOREIGN KEY (id_entite, trip_id) REFERENCES trips(id_entite, trip_id),
+   FOREIGN KEY (id_entite, stop_id) REFERENCES stops(id_entite, stop_id)
 );
