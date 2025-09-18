@@ -128,7 +128,26 @@ class ConnexionBDD:
                             and table_c.constraint_type = 'PRIMARY KEY'
                     ),
                     false
-                ) pk
+                ) is_pk,
+                coalesce(
+                    (
+                        select true
+                        from
+                            information_schema.key_column_usage colonne_u
+                            inner join information_schema.table_constraints table_c
+                                on table_c.table_catalog = colonne_u.table_catalog 
+                                and table_c.table_schema = colonne_u.table_schema 
+                                and table_c.table_name = colonne_u.table_name
+                                and table_c.constraint_name = colonne_u.constraint_name
+                        where
+                            colonne_u.table_catalog = colonne.table_catalog 
+                            and colonne_u.table_schema = colonne.table_schema 
+                            and colonne_u.table_name = colonne.table_name
+                            and colonne_u.column_name = colonne.column_name
+                            and table_c.constraint_type = 'UNIQUE'
+                    ),
+                    false
+                ) is_unique
             from
                 information_schema.columns colonne
             where
@@ -139,7 +158,10 @@ class ConnexionBDD:
         return self.executer_requete(chaine_sql, {'nom_base': self._nom_base, 'nom_table': nom_table}).mappings().fetchall()
     
     def liste_champs_pk(self, liste_champs_table: List[dict])-> List[dict]:
-        return [champ for champ in liste_champs_table if champ["pk"]]
+        return [champ for champ in liste_champs_table if champ["is_pk"]]
+    
+    def liste_champs_uniques(self, liste_champs_table: List[dict])-> List[dict]:
+        return [champ for champ in liste_champs_table if champ["is_unique"]]
     
     def liste_noms_champs_pk(self, liste_champs_table: List[dict])-> str:
         return [champ["column_name"] for champ in self.liste_champs_pk(liste_champs_table)]
@@ -187,6 +209,9 @@ class ConnexionBDD:
 
     def enregistrer_df_dans_table(self, df: pd.DataFrame, nom_table: str, verifier_existance_enregistrement: bool)-> None:
         
+        def champs_uniques_existants(liste_champs_table: List[dict])-> bool:
+            return len(self.liste_champs_uniques(liste_champs_table)) > 0
+        
         def upsert_pg(liste_champs_table: List[dict]):
             # on définie une table tempo pour pandas en la créant avec la structure de la table d'origine
             table_tempo_valide = False
@@ -210,10 +235,13 @@ class ConnexionBDD:
 
         if verifier_existance_enregistrement:
             liste_champs_table = self.champs_table(nom_table)
-            if True: # on peut sous-traiter à pg
-                upsert_pg(liste_champs_table)
-            else:
+            # On vérifie s'il y a des contraintes UNIQUE autre que la PK
+            # car la clause "on conflict" ne permet de gérer qu'une seule contrainte d'intégrité.
+            # S'il y en a plus qu'une (en plus de la PK donc…) alors on n'utilise pas cette méthode.
+            if champs_uniques_existants(liste_champs_table): 
                 for _, enregistrement in df.iterrows():
                     self.upsert(nom_table, enregistrement.to_dict(), liste_champs_table=liste_champs_table)
+            else:
+                upsert_pg(liste_champs_table) # on peut sous-traiter à pg
         else:
             df.to_sql(nom_table, con=self._connexion, if_exists="append", index=False, chunksize=1000, method="multi")

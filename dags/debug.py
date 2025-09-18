@@ -5,5 +5,5 @@ from metier.donnees_statiques import telecharger_donnees_statiques, enregistrer_
 utils.definir_en_test()
 
 configurer_bdd()
-telecharger_donnees_statiques()
+#telecharger_donnees_statiques()
 enregistrer_donnees_statiques_en_bdd()
