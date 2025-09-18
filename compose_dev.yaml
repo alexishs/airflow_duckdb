@@ -26,6 +26,7 @@ x-airflow-common: &airflow-common
     - ./logs:/opt/airflow/logs
     - ./warehouse:/opt/airflow/warehouse
     - ./exports:/opt/airflow/exports
+    - ./cache_metier:/opt/airflow/cache_metier
 
 
 services:

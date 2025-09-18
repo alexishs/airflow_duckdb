@@ -214,3 +214,4 @@ logs
 duckdb
 warehouse
 exports
+cache_metier

@@ -20,3 +20,6 @@ docker run -d \
     -v postgres-data:/var/lib/postgresql/data \
     -p 5432:5432 \
     postgres
+
+Pour lister les bonnes versions des bibliothèques à utiliser :
+lister_bibliotheques_python.sh
