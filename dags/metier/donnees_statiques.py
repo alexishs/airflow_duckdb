@@ -30,7 +30,7 @@ LISTE_TABLES_DONNEES_STATIQUES = ("agency", "calendar", "calendar_dates", "feed_
 
 def telecharger_donnees_statiques()-> None:
     connexion = ConnexionBDDMetier()
-    transaction = connexion.begin_transaction()
+    #transaction = connexion.begin_transaction() pas nécessaire ici
     exception = None
     try:
         # on vérifie qu'il n'y a pas de vieux fichiers avant de commencer
@@ -52,9 +52,9 @@ def telecharger_donnees_statiques()-> None:
                     fichier.extractall(utils.chemin_cache_compagnie(compagnie, ""))
                 os.remove(chemin_fichier_zip)
                 utils.log_infos_compagnie(compagnie, f"Fichier {chemin_fichier_zip} décompressé et supprimmé.")
-        connexion.commit(transaction)
+        #connexion.commit(transaction)
     except Exception as e:
-        connexion.rollback(transaction)
+        #connexion.rollback(transaction)
         exception = e
     connexion.fermer()
     if exception is not None:
@@ -110,7 +110,7 @@ def enregistrer_donnees_statiques_en_bdd()-> None:
                     lambda nom_colonne:
                         utils.log_warning_compagnie(compagnie, f"La colonne '{nom_colonne}' du fichier {chemin_fichier_csv} est absente de la table est ne sera pas importée !")
             )
-            connexion.enregistrer_df_dans_table(df, nom_table, verifier_existance_enregistrement=False) # on a supprimé les enregistrements avant.
+            connexion.enregistrer_df_dans_table(df, nom_table, verifier_existance_enregistrement=True) # on a supprimé les enregistrements avant.
             utils.log_infos_compagnie(compagnie, f"FIN traitement table {nom_table}.")
             return True
         else:
@@ -125,10 +125,10 @@ def enregistrer_donnees_statiques_en_bdd()-> None:
             if not Path(utils.chemin_cache_compagnie(compagnie, "")).exists():
                 utils.log_warning_compagnie(compagnie, "Le répertoire de cache n'éxiste pas.")
             else:
-                utils.log_infos_compagnie(compagnie, "DEBUT suppression des anciennes données statiques…")
-                for nom_table in reversed(LISTE_TABLES_DONNEES_STATIQUES):
-                    vider_table(nom_table, compagnie)
-                utils.log_infos_compagnie(compagnie, "FIN suppression des anciennes données statiques.")
+                # utils.log_infos_compagnie(compagnie, "DEBUT suppression des anciennes données statiques…")
+                # for nom_table in reversed(LISTE_TABLES_DONNEES_STATIQUES):
+                #     vider_table(nom_table, compagnie)
+                # utils.log_infos_compagnie(compagnie, "FIN suppression des anciennes données statiques.")
                 utils.log_infos_compagnie(compagnie, "DEBUT import des données statiques…")
                 transaction = connexion.begin_transaction()
                 for nom_table in LISTE_TABLES_DONNEES_STATIQUES:

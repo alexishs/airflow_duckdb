@@ -194,6 +194,8 @@ class ConnexionBDD:
                     if format_date_time is None:
                         raise Exception('Format de date/heure non fourni.')
                     df[champ["column_name"]] = pd.to_datetime(df[champ["column_name"]], format=format_date_time, errors='coerce')
+                elif champ["data_type"] == "timestamp without time zone":
+                    df[champ["column_name"]] = pd.to_datetime(df[champ["column_name"]], format='YYYY-MM-DD HH24:MI:SS', errors='coerce')
     def table_existe(self, nom_table: str)-> bool:
         chaine_sql = "select 1 from information_schema.tables where table_name = :nom_table"
         return len(self.executer_requete(chaine_sql, {"nom_table": nom_table}).all())

@@ -164,3 +164,16 @@ CREATE TABLE stop_times (
    FOREIGN KEY (id_compagnie, trip_id) REFERENCES trips(id_compagnie, trip_id),
    FOREIGN KEY (id_compagnie, stop_id) REFERENCES stops(id_compagnie, stop_id)
 );
+
+CREATE TABLE rt_trip_update (
+   id_compagnie INTEGER NOT NULL,
+   trip_id VARCHAR(255) NOT NULL,
+   route_id VARCHAR(255) NOT NULL,
+   stop_id VARCHAR(255),
+   arrival TIMESTAMP, -- enregistré dans la TZ UTC
+   PRIMARY KEY (id_compagnie, trip_id, route_id, stop_id),
+   FOREIGN KEY (id_compagnie) REFERENCES compagnie(id_compagnie),
+   FOREIGN KEY (id_compagnie, trip_id) REFERENCES trips(id_compagnie, trip_id),
+   FOREIGN KEY (id_compagnie, stop_id) REFERENCES stops(id_compagnie, stop_id),
+   FOREIGN KEY (id_compagnie, route_id) REFERENCES routes(id_compagnie, route_id)
+);
