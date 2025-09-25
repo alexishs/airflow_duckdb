@@ -79,7 +79,6 @@ CREATE TABLE routes (
    continuous_drop_off VARCHAR(255),
    network_id VARCHAR(255),
    PRIMARY KEY (id_compagnie, route_id),
-   FOREIGN KEY (id_compagnie) REFERENCES compagnie(id_compagnie),
    FOREIGN KEY (id_compagnie, agency_id) REFERENCES agency(id_compagnie, agency_id)
 );
 
@@ -131,7 +130,6 @@ CREATE TABLE trips (
    bikes_allowed VARCHAR(255),
    cars_allowed VARCHAR(255),
    PRIMARY KEY (id_compagnie, trip_id),
-   FOREIGN KEY (id_compagnie) REFERENCES compagnie(id_compagnie),
    FOREIGN KEY (id_compagnie, route_id) REFERENCES routes(id_compagnie, route_id)
    -- un service n'est pas forcément renseigné dans le calendrier
    -- FOREIGN KEY (id_compagnie, service_id) REFERENCES calendar(id_compagnie, service_id)
@@ -140,7 +138,6 @@ CREATE TABLE trips (
 CREATE TABLE stop_times (
    id_compagnie INTEGER NOT NULL,
    trip_id VARCHAR(255) NOT NULL,
-   -- Recommandation : Les champs de temps devraient être de type TIME
    arrival_time INTERVAL,
    departure_time INTERVAL,
    stop_id VARCHAR(255),
@@ -160,7 +157,6 @@ CREATE TABLE stop_times (
    drop_off_booking_rule_id VARCHAR(255),
    -- Clé primaire composée car un trip peut avoir de nombreux arrêts
    PRIMARY KEY (id_compagnie, trip_id, stop_sequence),
-   FOREIGN KEY (id_compagnie) REFERENCES compagnie(id_compagnie),
    FOREIGN KEY (id_compagnie, trip_id) REFERENCES trips(id_compagnie, trip_id),
    FOREIGN KEY (id_compagnie, stop_id) REFERENCES stops(id_compagnie, stop_id)
 );
@@ -172,7 +168,6 @@ CREATE TABLE rt_trip_update (
    stop_id VARCHAR(255),
    arrival TIMESTAMP, -- enregistré dans la TZ UTC
    PRIMARY KEY (id_compagnie, trip_id, route_id, stop_id),
-   FOREIGN KEY (id_compagnie) REFERENCES compagnie(id_compagnie),
    FOREIGN KEY (id_compagnie, trip_id) REFERENCES trips(id_compagnie, trip_id),
    FOREIGN KEY (id_compagnie, stop_id) REFERENCES stops(id_compagnie, stop_id),
    FOREIGN KEY (id_compagnie, route_id) REFERENCES routes(id_compagnie, route_id)
