@@ -126,6 +126,11 @@ Le mot de passe correspond à la valeur de la variable POSTGRES_PASSWORD.
 creer_demmarrer_conteneurs_dev.sh
 ```
 
+Liste des ports par services créés et accessibles en HTTP :
+
+- 8080 : Console d'administration d'Airflow avec ses DAGs ;
+- 8081 : PGAdmin (si besoin d'accès au Metastore d'Airflow)
+
 ## Exécution en local/Débogage
 
 Il est possible d'exécuter/déboger en local le code métier utilisé par les DAGs.
@@ -145,7 +150,7 @@ source .venv/bin/activate
 pip install -r ../requirements.txt
 ```
 
-Le fichier requirements.txt a été généré à partir des versions exactes des bibliothèques utilisées par Airflow dans ces conteneurs Docker.
+Le fichier requirements.txt a été généré à partir des versions exactes des bibliothèques utilisées par Airflow dans ses conteneurs Docker.
 Il est possible de lister les bibliothèques installées dans les conteneurs avec le script lister_bibliotheques_pyton.sh
 
 ### Débogage dans VSCode
@@ -173,8 +178,8 @@ Exemple de fichier de configuration (launch.json) pour déboger :
 ### Difficultés rencontrées
 - Configuration des conteneurs d'Airflow avec la gestion des droits sur les répertoire locaux mappés vers les conteneurs (gestion UID)
 - Pbs de compatibilité entre les versions de Python entre le développement local et l'exécution dans les conteneurs Docker. L'exécution en local n'était pas demandé, mais c'est pour moi un pré-requis obligatoire car je ne me vois pas travailler sur de gros projets sans pouvoir développer avec debugger en local. Je n'ai pas eu le temps de creuser l'exécution des DAGs dans Airflow tout en utilisant un debugger dans l'IDE.
-- Pandas.to_sql() fonctionne très bien pour "exporter" un Dataframe en BDD, mais n'est pas adaptée en l'état pour gérer les opérations CREATE/UPDATE/UPSERT dans des tables déjà existantes (voir ci-dessous).
-- Pbs de choix et de configuration/prise en main de l'outil de dashboarding sur la fin du projet (Apache Superset). J'aurais mieux fait de choisir Dash (théoriquement plus long, mais ça aurait certainement meiux fonctionné).
+- Pandas.to_sql() fonctionne très bien pour "exporter" un Dataframe en BDD, mais n'est pas adapté en l'état pour gérer les opérations CREATE/UPDATE/UPSERT dans des tables déjà existantes (voir ci-dessous).
+- Pbs de choix et de configuration/prise en main de l'outil de dashboarding sur la fin du projet (Apache Superset). J'aurais mieux fait de choisir Dash (théoriquement plus long à mettre en place, mais ça aurait certainement mieux fonctionné).
 
 ### Avancement
 L'accent a été mis sur la structuration des données et je n'ai pas eu le temps d'effectuer la gestion du positionnement GPS et les tableaux de bord dans un délai relativement court vues les problématiques rencontrées.
@@ -192,3 +197,53 @@ Cette possibilité dépend du type d'opération demandée et des contraintes d'i
 
 Honnêtement, j'ai du mal à croire qu'il n'y ait aucune fonctionalité/bibliothèque déjà existante qui ne fasse déjà ce travail. Mais l'implémenter moi-même a été formateur.
 
+### Exemple de requête utilisable dans un dashboard
+
+Décalage moyen, sur la journée en cours et pour la 1ère compagnie (Nice), par horaires d'arrivées prévues, entre les horaires d'arrivées prévues et les horaires d'arrivées calculées (effectives pour les horaires passées et prédictives pour les horaires à venir), en respectant les différences de timezones prévues dans GTFS :
+
+*Note : la requête prend en compte la timezone exhaustive pour chaque arrêt, mais il est possible de la simplifier, considérant qu'une seule timezone est applicable pour la compagnie visée (Nice).
+Une évolution possible serait d'enregistrer dans la table stop_times la timezone calculée pour alléger le traitement de recherche de timezone.*
+
+```sql
+with stop_times_tz as (
+	select
+		stop_times.id_compagnie,
+		stop_times.trip_id,
+		stop_times.stop_id,
+		stop_times.arrival_time,
+		coalesce(stops.stop_timezone, coalesce(stop_parent.stop_timezone, agency.agency_timezone)) calc_time_zone
+	from
+		stop_times
+		inner join stops
+			on stops.id_compagnie = stop_times.id_compagnie
+			and stops.stop_id = stop_times.stop_id
+		left outer join stops stop_parent
+			on stop_parent.id_compagnie = stops.id_compagnie
+			and stop_parent.stop_id  = stops.parent_station
+		inner join trips
+			on trips.id_compagnie = stop_times.id_compagnie
+			and trips.trip_id  = stop_times.trip_id 
+		inner join routes
+			on routes.id_compagnie = trips.id_compagnie
+			and routes.route_id = trips.route_id
+		inner join agency
+			on agency.id_compagnie = routes.id_compagnie
+			and agency.agency_id = routes.agency_id 
+)
+select 
+	stop_times_tz.arrival_time,
+	rt_trip_update.arrival AT TIME ZONE 'UTC' AT TIME ZONE stop_times_tz.calc_time_zone as arrivee_calculee,
+	cast(stop_times_tz.arrival_time as time) - cast((rt_trip_update.arrival AT TIME ZONE 'UTC' AT TIME ZONE stop_times_tz.calc_time_zone) as time) difference_moyenne,
+	rt_trip_update.trip_id 
+from
+	rt_trip_update
+	inner join stop_times_tz
+		on stop_times_tz.id_compagnie = rt_trip_update.id_compagnie 
+		and stop_times_tz.trip_id = rt_trip_update.trip_id
+		and stop_times_tz.stop_id = rt_trip_update.stop_id
+where
+	rt_trip_update.id_compagnie = 1
+	and rt_trip_update.arrival between cast(now() as date) and cast(now() as date) + cast('23:59:59' as time)
+order by
+	stop_times_tz.arrival_time;
+```
