@@ -15,7 +15,7 @@ with DAG(
     dag_id="donnees_rt",
     default_args=default_args,
     description="Gestion des données temps réel",
-    schedule_interval=timedelta(minutes=15),
+    schedule_interval=timedelta(minutes=3),
     #schedule=None, mode manuel
     start_date=datetime(2024, 6, 1),
     catchup=False

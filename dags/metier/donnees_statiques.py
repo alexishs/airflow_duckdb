@@ -110,6 +110,9 @@ def enregistrer_donnees_statiques_en_bdd()-> None:
                     lambda nom_colonne:
                         utils.log_warning_compagnie(compagnie, f"La colonne '{nom_colonne}' du fichier {chemin_fichier_csv} est absente de la table est ne sera pas importée !")
             )
+            # Particularités après formatage
+            if nom_table == "stops":
+                df['stop_timezone'] = df['stop_timezone'].replace('nan', None)
             connexion.enregistrer_df_dans_table(df, nom_table, verifier_existance_enregistrement=True) # on a supprimé les enregistrements avant.
             utils.log_infos_compagnie(compagnie, f"FIN traitement table {nom_table}.")
             return True

@@ -15,7 +15,7 @@ with DAG(
     dag_id="donnees_statiques",
     default_args=default_args,
     description="Gestion des données statiques",
-    schedule_interval=timedelta(hours=6),
+    schedule_interval=timedelta(days=15),
     start_date=datetime(2024, 6, 1),
     catchup=False
 ) as dag:
